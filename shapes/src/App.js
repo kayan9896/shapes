@@ -26,37 +26,21 @@ const App = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [activeDot]);
 
-  const handleLineClick = (e) => {
-    e.stopPropagation();
-    setShowDots(true);
-    setLineClicked(true);
-  };
-
   const handleDotMouseDown = (e, dotType) => {
-    e.stopPropagation();
-    setActiveDot(dotType);
-    setIsMouseDown(true);
-  };
+  e.preventDefault(); // Prevent text selection
+  e.stopPropagation();
+  setActiveDot(dotType);
+  setIsMouseDown(true);
+};
 
-  const handleMouseDown = (e) => {
-    if (lineClicked && !activeDot) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setDragLine({
-        startX: e.clientX - rect.left,
-        startY: e.clientY - rect.top,
-        originalCenter: { ...center },
-        originalRandom: { ...randomPoint }
-      });
-      setIsMouseDown(true);
-    }
-  };
-
-  const handleMouseMove = (e) => {
+// Update the useEffect for global mouse events
+useEffect(() => {
+  const handleGlobalMouseMove = (e) => {
     if (!isMouseDown) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const rect = lineRef.current.parentElement.getBoundingClientRect();
+    const x = Math.min(Math.max(0, e.clientX - rect.left), squareSize);
+    const y = Math.min(Math.max(0, e.clientY - rect.top), squareSize);
 
     if (activeDot === 'center') {
       setCenter({ x, y });
@@ -67,20 +51,48 @@ const App = () => {
       const dy = y - dragLine.startY;
       
       setCenter({ 
-        x: dragLine.originalCenter.x + dx, 
-        y: dragLine.originalCenter.y + dy 
+        x: Math.min(Math.max(0, dragLine.originalCenter.x + dx), squareSize),
+        y: Math.min(Math.max(0, dragLine.originalCenter.y + dy), squareSize)
       });
       setRandomPoint({ 
-        x: dragLine.originalRandom.x + dx, 
-        y: dragLine.originalRandom.y + dy 
+        x: Math.min(Math.max(0, dragLine.originalRandom.x + dx), squareSize),
+        y: Math.min(Math.max(0, dragLine.originalRandom.y + dy), squareSize)
       });
     }
   };
 
-  const handleMouseUp = () => {
+  const handleGlobalMouseUp = () => {
     setActiveDot(null);
     setDragLine(false);
     setIsMouseDown(false);
+  };
+
+  window.addEventListener('mousemove', handleGlobalMouseMove);
+  window.addEventListener('mouseup', handleGlobalMouseUp);
+
+  return () => {
+    window.removeEventListener('mousemove', handleGlobalMouseMove);
+    window.removeEventListener('mouseup', handleGlobalMouseUp);
+  };
+}, [isMouseDown, activeDot, dragLine, squareSize]);
+
+
+  const handleLineClick = (e) => {
+    e.stopPropagation();
+    setShowDots(true);
+    setLineClicked(true);
+  };
+  
+  const handleMouseDown = (e) => {
+    e.preventDefault(); 
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragLine({
+      startX: e.clientX - rect.left,
+      startY: e.clientY - rect.top,
+      originalCenter: { ...center },
+      originalRandom: { ...randomPoint }
+    });
+    setIsMouseDown(true);
   };
 
   const dotStyle = (active) => ({
@@ -93,6 +105,7 @@ const App = () => {
     cursor: 'move',
     display: showDots ? 'block' : 'none'
   });
+  
 
   return (
     <div 
@@ -102,8 +115,6 @@ const App = () => {
         border: '1px solid black', 
         position: 'relative' 
       }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
       onMouseDown={handleMouseDown}
     >
       {/* Image placeholder */}
@@ -127,7 +138,7 @@ const App = () => {
           y2={randomPoint.y}
           stroke="red"
           strokeWidth="2"
-          style={{ pointerEvents: 'auto', cursor: 'move' }}
+          style={{ pointerEvents: 'auto', cursor: 'pointer' }}
           onClick={handleLineClick}
         />
       </svg>
@@ -136,8 +147,8 @@ const App = () => {
       <div
         style={{
           ...dotStyle(activeDot === 'center'),
-          left: `${center.x - (activeDot === 'center' ? 10 : 5)}px`,
-          top: `${center.y - (activeDot === 'center' ? 10 : 5)}px`,
+          left: `${center.x - 2-(activeDot === 'center' ? 10 : 5)}px`,
+          top: `${center.y - 2-(activeDot === 'center' ? 10 : 5)}px`,
         }}
         onMouseDown={(e) => handleDotMouseDown(e, 'center')}
       />
