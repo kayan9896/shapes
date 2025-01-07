@@ -11,6 +11,7 @@ const App = () => {
   const [activeDot, setActiveDot] = useState(null);
   const [dragLine, setDragLine] = useState(false);
   const [lineClicked, setLineClicked] = useState(false);
+  const [isMouseDown, setIsMouseDown] = useState(false);
   const lineRef = useRef(null);
 
   useEffect(() => {
@@ -31,9 +32,10 @@ const App = () => {
     setLineClicked(true);
   };
 
-  const handleDotClick = (e, dotType) => {
+  const handleDotMouseDown = (e, dotType) => {
     e.stopPropagation();
     setActiveDot(dotType);
+    setIsMouseDown(true);
   };
 
   const handleMouseDown = (e) => {
@@ -45,24 +47,24 @@ const App = () => {
         originalCenter: { ...center },
         originalRandom: { ...randomPoint }
       });
+      setIsMouseDown(true);
     }
   };
 
   const handleMouseMove = (e) => {
-    if (activeDot) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      if (activeDot === 'center') {
-        setCenter({ x, y });
-      } else {
-        setRandomPoint({ x, y });
-      }
+    if (!isMouseDown) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (activeDot === 'center') {
+      setCenter({ x, y });
+    } else if (activeDot === 'random') {
+      setRandomPoint({ x, y });
     } else if (dragLine) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const dx = e.clientX - rect.left - dragLine.startX;
-      const dy = e.clientY - rect.top - dragLine.startY;
+      const dx = x - dragLine.startX;
+      const dy = y - dragLine.startY;
       
       setCenter({ 
         x: dragLine.originalCenter.x + dx, 
@@ -78,6 +80,7 @@ const App = () => {
   const handleMouseUp = () => {
     setActiveDot(null);
     setDragLine(false);
+    setIsMouseDown(false);
   };
 
   const dotStyle = (active) => ({
@@ -136,7 +139,7 @@ const App = () => {
           left: `${center.x - (activeDot === 'center' ? 10 : 5)}px`,
           top: `${center.y - (activeDot === 'center' ? 10 : 5)}px`,
         }}
-        onClick={(e) => handleDotClick(e, 'center')}
+        onMouseDown={(e) => handleDotMouseDown(e, 'center')}
       />
 
       {/* Random point dot */}
@@ -146,7 +149,7 @@ const App = () => {
           left: `${randomPoint.x - (activeDot === 'random' ? 10 : 5)}px`,
           top: `${randomPoint.y - (activeDot === 'random' ? 10 : 5)}px`,
         }}
-        onClick={(e) => handleDotClick(e, 'random')}
+        onMouseDown={(e) => handleDotMouseDown(e, 'random')}
       />
     </div>
   );
