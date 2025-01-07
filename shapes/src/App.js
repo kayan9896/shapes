@@ -16,15 +16,21 @@ const App = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (lineRef.current && !lineRef.current.contains(e.target) && !activeDot) {
+      const rect = lineRef.current.parentElement.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+  
+      if (!isPointNearLine(mouseX, mouseY, center.x, center.y, randomPoint.x, randomPoint.y) &&
+          !e.target.classList.contains('draggable-dot')) {
         setShowDots(false);
         setLineClicked(false);
       }
     };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [activeDot]);
+  
+    document.addEventListener('mouseup', handleClickOutside);
+    return () => document.removeEventListener('mouseup', handleClickOutside);
+  }, [center, randomPoint]);
+  
 
   const handleDotMouseDown = (e, dotType) => {
   e.preventDefault(); // Prevent text selection
@@ -65,6 +71,7 @@ useEffect(() => {
     setActiveDot(null);
     setDragLine(false);
     setIsMouseDown(false);
+ 
   };
 
   window.addEventListener('mousemove', handleGlobalMouseMove);
@@ -83,17 +90,44 @@ useEffect(() => {
     setLineClicked(true);
   };
   
-  const handleMouseDown = (e) => {
-    e.preventDefault(); 
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragLine({
-      startX: e.clientX - rect.left,
-      startY: e.clientY - rect.top,
-      originalCenter: { ...center },
-      originalRandom: { ...randomPoint }
-    });
-    setIsMouseDown(true);
+  const HIT_TOLERANCE = 5;
+
+  // Helper function to check if a point is near the line
+  const isPointNearLine = (px, py, x1, y1, x2, y2) => {
+    const lineLength = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    if (lineLength === 0) return false;
+    
+    const t = ((px-x1) * (x2-x1) + (py-y1) * (y2-y1)) / (lineLength**2);
+    
+    if (t < 0) return Math.sqrt((px-x1)**2 + (py-y1)**2) <= HIT_TOLERANCE;
+    if (t > 1) return Math.sqrt((px-x2)**2 + (py-y2)**2) <= HIT_TOLERANCE;
+    
+    const nearestX = x1 + t * (x2-x1);
+    const nearestY = y1 + t * (y2-y1);
+    return Math.sqrt((px-nearestX)**2 + (py-nearestY)**2) <= HIT_TOLERANCE;
   };
+
+  // Modify handleMouseDown
+  const handleMouseDown = (e) => {
+    if (lineClicked && !activeDot) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Check if click is near the line
+      if (isPointNearLine(mouseX, mouseY, center.x, center.y, randomPoint.x, randomPoint.y)) {
+        e.preventDefault();
+        setDragLine({
+          startX: mouseX,
+          startY: mouseY,
+          originalCenter: { ...center },
+          originalRandom: { ...randomPoint }
+        });
+        setIsMouseDown(true);
+      }
+    }
+  };
+
 
   const dotStyle = (active) => ({
     width: active ? '20px' : '10px',
@@ -130,6 +164,19 @@ useEffect(() => {
         width={squareSize} 
         height={squareSize}
       >
+        {/* Invisible wider line for hit detection */}
+        <line
+          x1={center.x}
+          y1={center.y}
+          x2={randomPoint.x}
+          y2={randomPoint.y}
+          stroke="transparent"
+          strokeWidth={HIT_TOLERANCE * 2}
+          style={{ pointerEvents: 'all', cursor: 'pointer' }}
+          onClick={handleLineClick}
+          onMouseDown={handleMouseDown}
+        />
+        {/* Visible line */}
         <line
           ref={lineRef}
           x1={center.x}
@@ -138,13 +185,13 @@ useEffect(() => {
           y2={randomPoint.y}
           stroke="red"
           strokeWidth="2"
-          style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-          onClick={handleLineClick}
+          style={{ pointerEvents: 'none' }}
         />
       </svg>
 
       {/* Center dot */}
       <div
+        className="draggable-dot" // Add this class
         style={{
           ...dotStyle(activeDot === 'center'),
           left: `${center.x - 2-(activeDot === 'center' ? 10 : 5)}px`,
@@ -153,8 +200,8 @@ useEffect(() => {
         onMouseDown={(e) => handleDotMouseDown(e, 'center')}
       />
 
-      {/* Random point dot */}
       <div
+        className="draggable-dot" // Add this class
         style={{
           ...dotStyle(activeDot === 'random'),
           left: `${randomPoint.x - (activeDot === 'random' ? 10 : 5)}px`,
