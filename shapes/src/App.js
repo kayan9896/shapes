@@ -98,6 +98,20 @@ const App = () => {
     setLineClicked(true);
   };
 
+
+    const [center, setCenter] = useState([100, 100]);
+    const [edgePoint, setEdgePoint] = useState([150, 100]);
+  
+    const handleCenterChange = (newCenter) => {
+      setCenter(newCenter);
+      console.log("New center:", newCenter);
+    };
+  
+    const handleEdgePointChange = (newEdgePoint) => {
+      setEdgePoint(newEdgePoint);
+      console.log("New edge point:", newEdgePoint);
+    };
+
   return (
     <div 
       style={{ 
@@ -108,7 +122,12 @@ const App = () => {
       }}
       onMouseDown={handleMouseDown}
     >
-      <Circle initialCenter={circle[0]} initialEdgePoint={circle[1]} />
+      <Circle 
+        center={center}
+        edgePoint={edgePoint}
+        onCenterChange={handleCenterChange}
+        onEdgePointChange={handleEdgePointChange}
+      />
       <svg 
         ref={lineRef}
         style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
