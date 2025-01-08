@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Circle from './Circle';
 
 const App = () => {
   const squareSize = 400;
@@ -157,6 +158,20 @@ useEffect(() => {
     }
   };
 
+    const [ccenter, setcCenter] = useState([100, 100]);
+    const [edgePoint, setEdgePoint] = useState([150, 100]);
+  
+    const handleCenterChange = (newCenter) => {
+      setcCenter(newCenter);
+      console.log("New center:", newCenter);
+    };
+  
+    const handleEdgePointChange = (newEdgePoint) => {
+      setEdgePoint(newEdgePoint);
+      console.log("New edge point:", newEdgePoint);
+    };
+    
+
 
   const dotStyle = (active) => ({
     width: active ? '20px' : '10px',
@@ -182,13 +197,19 @@ useEffect(() => {
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
+      
       {/* Image placeholder */}
       <img 
-        src="path-to-your-image.jpg" 
+        src="./drr.png" 
         alt="Square content" 
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
-
+      <Circle 
+        center={ccenter}
+        edgePoint={edgePoint}
+        onCenterChange={handleCenterChange}
+        onEdgePointChange={handleEdgePointChange}
+      />
       {/* Line */}
       <svg 
         style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
@@ -247,6 +268,10 @@ useEffect(() => {
         onMouseDown={(e) => handleDotMouseDown(e, 'random')}
         onTouchStart={(e) => handleTouchStart(e)}
       />
+      <div>
+        <p>Center: ({ccenter[0]}, {ccenter[1]})</p>
+        <p>Edge Point: ({edgePoint[0]}, {edgePoint[1]})</p>
+      </div>
     </div>
   );
 };
