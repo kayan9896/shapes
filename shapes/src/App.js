@@ -39,14 +39,39 @@ const App = () => {
   setIsMouseDown(true);
 };
 
-// Update the useEffect for global mouse events
+const handleTouchStart = (e) => {
+  e.preventDefault(); // Prevent scrolling while dragging
+  const touch = e.touches[0];
+  const rect = e.currentTarget.getBoundingClientRect();
+  const touchX = touch.clientX - rect.left;
+  const touchY = touch.clientY - rect.top;
+
+  if (e.target.classList.contains('draggable-dot')) {
+    const dotType = e.target.getAttribute('data-dot-type');
+    setActiveDot(dotType);
+    setIsMouseDown(true);
+  } else if (isPointNearLine(touchX, touchY, center.x, center.y, randomPoint.x, randomPoint.y)) {
+    setDragLine({
+      startX: touchX,
+      startY: touchY,
+      originalCenter: { ...center },
+      originalRandom: { ...randomPoint }
+    });
+    setIsMouseDown(true);
+  }
+  setShowDots(true);
+  setLineClicked(true);
+};
+
 useEffect(() => {
-  const handleGlobalMouseMove = (e) => {
+  const handleGlobalMove = (e) => {
     if (!isMouseDown) return;
 
     const rect = lineRef.current.parentElement.getBoundingClientRect();
-    const x = Math.min(Math.max(0, e.clientX - rect.left), squareSize);
-    const y = Math.min(Math.max(0, e.clientY - rect.top), squareSize);
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = Math.min(Math.max(0, clientX - rect.left), squareSize);
+    const y = Math.min(Math.max(0, clientY - rect.top), squareSize);
 
     if (activeDot === 'center') {
       setCenter({ x, y });
@@ -67,19 +92,23 @@ useEffect(() => {
     }
   };
 
-  const handleGlobalMouseUp = () => {
+  const handleGlobalEnd = () => {
     setActiveDot(null);
     setDragLine(false);
     setIsMouseDown(false);
- 
   };
 
-  window.addEventListener('mousemove', handleGlobalMouseMove);
-  window.addEventListener('mouseup', handleGlobalMouseUp);
+  // Add both mouse and touch event listeners
+  window.addEventListener('mousemove', handleGlobalMove);
+  window.addEventListener('mouseup', handleGlobalEnd);
+  window.addEventListener('touchmove', handleGlobalMove, { passive: false });
+  window.addEventListener('touchend', handleGlobalEnd);
 
   return () => {
-    window.removeEventListener('mousemove', handleGlobalMouseMove);
-    window.removeEventListener('mouseup', handleGlobalMouseUp);
+    window.removeEventListener('mousemove', handleGlobalMove);
+    window.removeEventListener('mouseup', handleGlobalEnd);
+    window.removeEventListener('touchmove', handleGlobalMove);
+    window.removeEventListener('touchend', handleGlobalEnd);
   };
 }, [isMouseDown, activeDot, dragLine, squareSize]);
 
@@ -147,9 +176,11 @@ useEffect(() => {
         width: `${squareSize}px`, 
         height: `${squareSize}px`, 
         border: '1px solid black', 
-        position: 'relative' 
+        position: 'relative',
+        touchAction: 'none', // Prevent default touch actions
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
     >
       {/* Image placeholder */}
       <img 
@@ -172,9 +203,10 @@ useEffect(() => {
           y2={randomPoint.y}
           stroke="transparent"
           strokeWidth={HIT_TOLERANCE * 2}
-          style={{ pointerEvents: 'all', cursor: 'pointer' }}
+          style={{ pointerEvents: 'all', cursor: 'pointer', touchAction: 'none' }}
           onClick={handleLineClick}
           onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
         />
         {/* Visible line */}
         <line
@@ -191,23 +223,29 @@ useEffect(() => {
 
       {/* Center dot */}
       <div
-        className="draggable-dot" // Add this class
+        className="draggable-dot"
+        data-dot-type="center" // Add this attribute
         style={{
           ...dotStyle(activeDot === 'center'),
           left: `${center.x - 2-(activeDot === 'center' ? 10 : 5)}px`,
           top: `${center.y - 2-(activeDot === 'center' ? 10 : 5)}px`,
+          touchAction: 'none', // Prevent default touch actions
         }}
         onMouseDown={(e) => handleDotMouseDown(e, 'center')}
+        onTouchStart={(e) => handleTouchStart(e)}
       />
 
       <div
-        className="draggable-dot" // Add this class
+        className="draggable-dot"
+        data-dot-type="random" // Add this attribute
         style={{
           ...dotStyle(activeDot === 'random'),
           left: `${randomPoint.x - (activeDot === 'random' ? 10 : 5)}px`,
           top: `${randomPoint.y - (activeDot === 'random' ? 10 : 5)}px`,
+          touchAction: 'none', // Prevent default touch actions
         }}
         onMouseDown={(e) => handleDotMouseDown(e, 'random')}
+        onTouchStart={(e) => handleTouchStart(e)}
       />
     </div>
   );
