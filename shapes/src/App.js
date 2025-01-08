@@ -1,174 +1,102 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Circle from './Circle';
 
 const App = () => {
   const squareSize = 400;
-  const [center, setCenter] = useState({ x: squareSize / 2, y: squareSize / 2 });
-  const [randomPoint, setRandomPoint] = useState({
-    x: Math.random() * squareSize,
-    y: Math.random() * squareSize
-  });
   const [showDots, setShowDots] = useState(false);
-  const [activeDot, setActiveDot] = useState(null);
-  const [dragLine, setDragLine] = useState(false);
   const [lineClicked, setLineClicked] = useState(false);
+  const [activeDot, setActiveDot] = useState(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
+  const [dragLine, setDragLine] = useState(false);
   const lineRef = useRef(null);
+  const circle = [[100, 100], [150, 100]];
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      const rect = lineRef.current.parentElement.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-  
-      if (!isPointNearLine(mouseX, mouseY, center.x, center.y, randomPoint.x, randomPoint.y) &&
-          !e.target.classList.contains('draggable-dot')) {
-        setShowDots(false);
-        setLineClicked(false);
-      }
-    };
-  
-    document.addEventListener('mouseup', handleClickOutside);
-    return () => document.removeEventListener('mouseup', handleClickOutside);
-  }, [center, randomPoint]);
-  
+  // Generate initial points for the parabola
+  const generateParabolaPoints = (centerX, centerY) => {
+    const points = [];
+    // Generate points from -10 to 10 with smaller steps for smoothness
+    for (let x = -10; x <= 10; x += 1) {
+      // Scale x and y to fit nicely in the square
+      const scaledX = x * 20 + centerX; // Scale and shift x
+      const scaledY = -(x * x) * 2 + centerY; // Scale and shift y, negative to flip parabola
+      points.push({ x: scaledX, y: scaledY });
+    }
+    return points;
+  };
 
-  const handleDotMouseDown = (e, dotType) => {
-  e.preventDefault(); // Prevent text selection
-  e.stopPropagation();
-  setActiveDot(dotType);
-  setIsMouseDown(true);
-};
+  // State for all points of the curve
+  const [points, setPoints] = useState(
+    generateParabolaPoints(squareSize / 2, squareSize / 2)
+  );
 
-const handleTouchStart = (e) => {
-  e.preventDefault(); // Prevent scrolling while dragging
-  const touch = e.touches[0];
-  const rect = e.currentTarget.getBoundingClientRect();
-  const touchX = touch.clientX - rect.left;
-  const touchY = touch.clientY - rect.top;
-
-  if (e.target.classList.contains('draggable-dot')) {
-    const dotType = e.target.getAttribute('data-dot-type');
-    setActiveDot(dotType);
-    setIsMouseDown(true);
-  } else if (isPointNearLine(touchX, touchY, center.x, center.y, randomPoint.x, randomPoint.y)) {
-    setDragLine({
-      startX: touchX,
-      startY: touchY,
-      originalCenter: { ...center },
-      originalRandom: { ...randomPoint }
-    });
-    setIsMouseDown(true);
-  }
-  setShowDots(true);
-  setLineClicked(true);
-};
-
-useEffect(() => {
-  const handleGlobalMove = (e) => {
-    if (!isMouseDown) return;
-
-    const rect = lineRef.current.parentElement.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const x = Math.min(Math.max(0, clientX - rect.left), squareSize);
-    const y = Math.min(Math.max(0, clientY - rect.top), squareSize);
-
-    if (activeDot === 'center') {
-      setCenter({ x, y });
-    } else if (activeDot === 'random') {
-      setRandomPoint({ x, y });
-    } else if (dragLine) {
-      const dx = x - dragLine.startX;
-      const dy = y - dragLine.startY;
-      
-      setCenter({ 
-        x: Math.min(Math.max(0, dragLine.originalCenter.x + dx), squareSize),
-        y: Math.min(Math.max(0, dragLine.originalCenter.y + dy), squareSize)
+  // Handle line drag
+  const handleMouseDown = (e) => {
+    if (lineClicked && !activeDot) {
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      setDragLine({
+        startX: e.clientX - rect.left,
+        startY: e.clientY - rect.top,
+        originalPoints: [...points]
       });
-      setRandomPoint({ 
-        x: Math.min(Math.max(0, dragLine.originalRandom.x + dx), squareSize),
-        y: Math.min(Math.max(0, dragLine.originalRandom.y + dy), squareSize)
-      });
+      setIsMouseDown(true);
     }
   };
 
-  const handleGlobalEnd = () => {
-    setActiveDot(null);
-    setDragLine(false);
-    setIsMouseDown(false);
+  // Handle dot drag
+  const handleDotMouseDown = (e, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveDot(index);
+    setIsMouseDown(true);
   };
 
-  // Add both mouse and touch event listeners
-  window.addEventListener('mousemove', handleGlobalMove);
-  window.addEventListener('mouseup', handleGlobalEnd);
-  window.addEventListener('touchmove', handleGlobalMove, { passive: false });
-  window.addEventListener('touchend', handleGlobalEnd);
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (!isMouseDown) return;
 
-  return () => {
-    window.removeEventListener('mousemove', handleGlobalMove);
-    window.removeEventListener('mouseup', handleGlobalEnd);
-    window.removeEventListener('touchmove', handleGlobalMove);
-    window.removeEventListener('touchend', handleGlobalEnd);
-  };
-}, [isMouseDown, activeDot, dragLine, squareSize]);
+      const rect = lineRef.current.parentElement.getBoundingClientRect();
+      const x = Math.min(Math.max(0, e.clientX - rect.left), squareSize);
+      const y = Math.min(Math.max(0, e.clientY - rect.top), squareSize);
 
+      if (typeof activeDot === 'number') {
+        // Move individual point
+        const newPoints = [...points];
+        newPoints[activeDot] = { x, y };
+        setPoints(newPoints);
+      } else if (dragLine) {
+        // Move entire curve
+        const dx = x - dragLine.startX;
+        const dy = y - dragLine.startY;
+        
+        const newPoints = dragLine.originalPoints.map(point => ({
+          x: Math.min(Math.max(0, point.x + dx), squareSize),
+          y: Math.min(Math.max(0, point.y + dy), squareSize)
+        }));
+        setPoints(newPoints);
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      setActiveDot(null);
+      setDragLine(false);
+      setIsMouseDown(false);
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isMouseDown, activeDot, dragLine, squareSize, points]);
 
   const handleLineClick = (e) => {
     e.stopPropagation();
     setShowDots(true);
     setLineClicked(true);
   };
-  
-  const HIT_TOLERANCE = 5;
-
-  // Helper function to check if a point is near the line
-  const isPointNearLine = (px, py, x1, y1, x2, y2) => {
-    const lineLength = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
-    if (lineLength === 0) return false;
-    
-    const t = ((px-x1) * (x2-x1) + (py-y1) * (y2-y1)) / (lineLength**2);
-    
-    if (t < 0) return Math.sqrt((px-x1)**2 + (py-y1)**2) <= HIT_TOLERANCE;
-    if (t > 1) return Math.sqrt((px-x2)**2 + (py-y2)**2) <= HIT_TOLERANCE;
-    
-    const nearestX = x1 + t * (x2-x1);
-    const nearestY = y1 + t * (y2-y1);
-    return Math.sqrt((px-nearestX)**2 + (py-nearestY)**2) <= HIT_TOLERANCE;
-  };
-
-  // Modify handleMouseDown
-  const handleMouseDown = (e) => {
-    if (lineClicked && !activeDot) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      // Check if click is near the line
-      if (isPointNearLine(mouseX, mouseY, center.x, center.y, randomPoint.x, randomPoint.y)) {
-        e.preventDefault();
-        setDragLine({
-          startX: mouseX,
-          startY: mouseY,
-          originalCenter: { ...center },
-          originalRandom: { ...randomPoint }
-        });
-        setIsMouseDown(true);
-      }
-    }
-  };
-
-
-  const dotStyle = (active) => ({
-    width: active ? '20px' : '10px',
-    height: active ? '20px' : '10px',
-    backgroundColor: active ? 'transparent' : 'red',
-    border: '2px solid red',
-    borderRadius: '50%',
-    position: 'absolute',
-    cursor: 'move',
-    display: showDots ? 'block' : 'none'
-  });
-  
 
   return (
     <div 
@@ -176,77 +104,57 @@ useEffect(() => {
         width: `${squareSize}px`, 
         height: `${squareSize}px`, 
         border: '1px solid black', 
-        position: 'relative',
-        touchAction: 'none', // Prevent default touch actions
+        position: 'relative' 
       }}
       onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
     >
-      {/* Image placeholder */}
-      <img 
-        src="path-to-your-image.jpg" 
-        alt="Square content" 
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      />
-
-      {/* Line */}
+      <Circle initialCenter={circle[0]} initialEdgePoint={circle[1]} />
       <svg 
+        ref={lineRef}
         style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
         width={squareSize} 
         height={squareSize}
       >
-        {/* Invisible wider line for hit detection */}
-        <line
-          x1={center.x}
-          y1={center.y}
-          x2={randomPoint.x}
-          y2={randomPoint.y}
+        {/* Invisible wider polyline for better hit detection */}
+        <polyline
+          points={points.map(p => `${p.x},${p.y}`).join(' ')}
           stroke="transparent"
-          strokeWidth={HIT_TOLERANCE * 2}
-          style={{ pointerEvents: 'all', cursor: 'pointer', touchAction: 'none' }}
+          strokeWidth="10"
+          fill="none"
+          style={{ pointerEvents: 'all', cursor: 'pointer' }}
           onClick={handleLineClick}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
         />
-        {/* Visible line */}
-        <line
-          ref={lineRef}
-          x1={center.x}
-          y1={center.y}
-          x2={randomPoint.x}
-          y2={randomPoint.y}
+        {/* Visible polyline */}
+        <polyline
+          points={points.map(p => `${p.x},${p.y}`).join(' ')}
           stroke="red"
           strokeWidth="2"
+          fill="none"
           style={{ pointerEvents: 'none' }}
         />
       </svg>
 
-      {/* Center dot */}
-      <div
-        className="draggable-dot"
-        data-dot-type="center" // Add this attribute
-        style={{
-          ...dotStyle(activeDot === 'center'),
-          left: `${center.x - 2-(activeDot === 'center' ? 10 : 5)}px`,
-          top: `${center.y - 2-(activeDot === 'center' ? 10 : 5)}px`,
-          touchAction: 'none', // Prevent default touch actions
-        }}
-        onMouseDown={(e) => handleDotMouseDown(e, 'center')}
-        onTouchStart={(e) => handleTouchStart(e)}
-      />
-
-      <div
-        className="draggable-dot"
-        data-dot-type="random" // Add this attribute
-        style={{
-          ...dotStyle(activeDot === 'random'),
-          left: `${randomPoint.x - (activeDot === 'random' ? 10 : 5)}px`,
-          top: `${randomPoint.y - (activeDot === 'random' ? 10 : 5)}px`,
-          touchAction: 'none', // Prevent default touch actions
-        }}
-        onMouseDown={(e) => handleDotMouseDown(e, 'random')}
-        onTouchStart={(e) => handleTouchStart(e)}
-      />
+      {/* Dots */}
+      {showDots && points.map((point, index) => (
+        <div
+          key={index}
+          className="draggable-dot"
+          style={{
+            ...{
+              width: activeDot === index ? '20px' : '5px',
+              height: activeDot === index ? '20px' : '5px',
+              backgroundColor: activeDot === index ? 'transparent' : 'red',
+              border: '2px solid red',
+              borderRadius: '50%',
+              position: 'absolute',
+              cursor: 'move',
+              left: `${point.x - (activeDot === index ? 10 : 5)}px`,
+              top: `${point.y - (activeDot === index ? 10 : 5)}px`,
+            }
+          }}
+          onMouseDown={(e) => handleDotMouseDown(e, index)}
+        />
+      ))}
     </div>
   );
 };
