@@ -167,7 +167,8 @@ const Arc = ({ arc: initialArc }) => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default' }}
+      pointerEvents={"visible"}
+      style={{  position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default', pointerEvents:"visible" }}
     />
   );
 };
