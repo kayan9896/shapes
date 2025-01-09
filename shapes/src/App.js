@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Circle from './Circle';
+import Arc from './Arc';
 
 const App = () => {
   const squareSize = 400;
@@ -14,6 +15,11 @@ const App = () => {
   const [lineClicked, setLineClicked] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const lineRef = useRef(null);
+  const arcPoints = [
+    [50, 50],   // First point (x1, y1)
+    [100, 100], // Second point (x2, y2)
+    [100, 0]   // Third point (x3, y3)
+  ];
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -210,6 +216,7 @@ useEffect(() => {
         onCenterChange={handleCenterChange}
         onEdgePointChange={handleEdgePointChange}
       />
+      <Arc arc={arcPoints} />
       {/* Line */}
       <svg 
         style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
