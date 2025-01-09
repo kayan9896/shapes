@@ -5,12 +5,13 @@ const Arc = ({ arc: initialArc }) => {
   const [arc, setArc] = useState(initialArc);
   const [isSelected, setIsSelected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedPointIndex, setDraggedPointIndex] = useState(null);
   const [dragStart, setDragStart] = useState(null);
 
   useEffect(() => {
     if (!arc || arc.length !== 3) return;
     drawArc();
-  }, [arc, isSelected]);
+  }, [arc, isSelected, isDragging, draggedPointIndex]);
 
   function findCircle(p1, p2, p3) {
     const x1 = p1[0], y1 = p1[1];
@@ -49,35 +50,39 @@ const Arc = ({ arc: initialArc }) => {
     let startAngle = calculateAngle(center, arc[0]);
     let midAngle = calculateAngle(center, arc[1]);
     let endAngle = calculateAngle(center, arc[2]);
-  
-    // Determine if we need to draw clockwise or counterclockwise
-    let clockwise = true;
-    
-    // Normalize angles to 0-2π range
+
     startAngle = (startAngle + 2 * Math.PI) % (2 * Math.PI);
     midAngle = (midAngle + 2 * Math.PI) % (2 * Math.PI);
     endAngle = (endAngle + 2 * Math.PI) % (2 * Math.PI);
-  
-    // Determine direction based on middle point
+
+    let counterclockwise = true;
     if (startAngle < endAngle) {
-      clockwise = midAngle < startAngle || midAngle > endAngle;
+      if(midAngle < startAngle && midAngle > endAngle) counterclockwise=false
     } else {
-      clockwise = !(midAngle > endAngle && midAngle < startAngle);
+      counterclockwise = (midAngle > endAngle && midAngle < startAngle);
     }
-  
+
     // Draw arc
     ctx.beginPath();
     ctx.strokeStyle = 'yellow';
     ctx.lineWidth = 2;
-    ctx.arc(center[0], center[1], radius, startAngle, endAngle, clockwise);
+    ctx.arc(center[0], center[1], radius, startAngle, endAngle, counterclockwise);
     ctx.stroke();
-  
+
     // Draw points if selected
     if (isSelected) {
-      arc.forEach(point => {
+      arc.forEach((point, index) => {
         ctx.beginPath();
-        ctx.arc(point[0], point[1], 4, 0, 2 * Math.PI);
-        ctx.fillStyle = 'yellow';
+        
+        // Enlarged and transparent if being dragged
+        if (index === draggedPointIndex) {
+          ctx.arc(point[0], point[1], 8, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+        } else {
+          ctx.arc(point[0], point[1], 4, 0, 2 * Math.PI);
+          ctx.fillStyle = 'yellow';
+        }
+        
         ctx.fill();
       });
     }
@@ -88,7 +93,13 @@ const Arc = ({ arc: initialArc }) => {
     const distanceFromCenter = Math.sqrt(
       Math.pow(x - center[0], 2) + Math.pow(y - center[1], 2)
     );
-    return Math.abs(distanceFromCenter - radius) < 5; // 5px tolerance
+    return Math.abs(distanceFromCenter - radius) < 5;
+  }
+
+  function isPointNearControlPoint(x, y) {
+    return arc.findIndex(point => 
+      Math.sqrt(Math.pow(x - point[0], 2) + Math.pow(y - point[1], 2)) < 5
+    );
   }
 
   function handleMouseDown(e) {
@@ -97,10 +108,18 @@ const Arc = ({ arc: initialArc }) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    if (isPointOnArc(x, y)) {
-      setIsSelected(true);
+    const controlPointIndex = isPointNearControlPoint(x, y);
+    
+    if (controlPointIndex !== -1) {
       setIsDragging(true);
+      setDraggedPointIndex(controlPointIndex);
       setDragStart([x, y]);
+      setIsSelected(true);
+    } else if (isPointOnArc(x, y)) {
+      setIsDragging(true);
+      setDraggedPointIndex(null);
+      setDragStart([x, y]);
+      setIsSelected(true);
     } else {
       setIsSelected(false);
     }
@@ -114,20 +133,29 @@ const Arc = ({ arc: initialArc }) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const dx = x - dragStart[0];
-    const dy = y - dragStart[1];
+    if (draggedPointIndex !== null) {
+      // Moving a control point
+      const newArc = [...arc];
+      newArc[draggedPointIndex] = [x, y];
+      setArc(newArc);
+    } else {
+      // Moving the entire arc
+      const dx = x - dragStart[0];
+      const dy = y - dragStart[1];
 
-    const newArc = arc.map(point => [
-      point[0] + dx,
-      point[1] + dy
-    ]);
+      const newArc = arc.map(point => [
+        point[0] + dx,
+        point[1] + dy
+      ]);
 
-    setArc(newArc);
-    setDragStart([x, y]);
+      setArc(newArc);
+      setDragStart([x, y]);
+    }
   }
 
   function handleMouseUp() {
     setIsDragging(false);
+    setDraggedPointIndex(null);
   }
 
   return (
@@ -139,7 +167,7 @@ const Arc = ({ arc: initialArc }) => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ cursor: isSelected ? 'move' : 'default' }}
+      style={{ cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default' }}
     />
   );
 };

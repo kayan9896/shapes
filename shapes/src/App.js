@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Circle from './Circle';
 import Arc from './Arc';
+import Ellipse from './Ellipse';
 
 const App = () => {
   const squareSize = 400;
@@ -19,6 +20,12 @@ const App = () => {
     [50, 50],   // First point (x1, y1)
     [100, 100], // Second point (x2, y2)
     [100, 0]   // Third point (x3, y3)
+  ];
+
+  const ellipsePoints = [
+    [50, 100],   // First vertex
+    [100, 50],   // Co-vertex
+    [150, 100]   // Second vertex
   ];
 
   useEffect(() => {
@@ -206,7 +213,7 @@ useEffect(() => {
       
       {/* Image placeholder */}
       <img 
-        src="./drr.png" 
+        src={require("./drr.png")} 
         alt="Square content" 
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
@@ -216,7 +223,7 @@ useEffect(() => {
         onCenterChange={handleCenterChange}
         onEdgePointChange={handleEdgePointChange}
       />
-      <Arc arc={arcPoints} />
+      <Ellipse ellipse={ellipsePoints} />
       {/* Line */}
       <svg 
         style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
