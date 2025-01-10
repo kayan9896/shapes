@@ -85,7 +85,7 @@ const Circle = ({ center, edgePoint, onCenterChange, onEdgePointChange }) => {
       height="100%" 
       onMouseMove={handleMouseMove}
       onClick={handleSvgClick}
-      style={{ position: 'absolute', top: 0, left: 0,cursor: isDraggingCenter || isDraggingEdge ? 'grabbing' : 'default',pointerEvents:"visible" }}
+      style={{ position: 'absolute', top: 0, left: 0,cursor: isDraggingCenter || isDraggingEdge ? 'grabbing' : 'default' }}
     >
       <g onClick={handleCircleClick}>
         {/* Circle */}
@@ -107,6 +107,7 @@ const Circle = ({ center, edgePoint, onCenterChange, onEdgePointChange }) => {
               cx={center[0]}
               cy={center[1]}
               cursor="grab"
+              pointerEvents="auto"
               onMouseDown={(e) => handleMouseDown(e, true)}
               {...(isDraggingCenter ? draggedPointStyle : normalPointStyle)}
             />
@@ -116,6 +117,7 @@ const Circle = ({ center, edgePoint, onCenterChange, onEdgePointChange }) => {
               cx={edgePoint[0]}
               cy={edgePoint[1]}
               cursor="grab"
+              pointerEvents="auto"
               onMouseDown={(e) => handleMouseDown(e, false)}
               {...(isDraggingEdge ? draggedPointStyle : normalPointStyle)}
             />

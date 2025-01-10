@@ -47,13 +47,14 @@ const App = () => {
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',pointerEvents:"none" }}>
+        
+        <Arc arc={arcPoints} />
         <Circle 
           center={ccenter}
           edgePoint={edgePoint}
           onCenterChange={handleCenterChange}
           onEdgePointChange={handleEdgePointChange}
         />
-        <Arc arc={arcPoints} />
         <Ellipse ellipse={ellipsePoints} />
         <Line 
           squareSize={squareSize} 
