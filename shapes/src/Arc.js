@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const Arc = ({ arc: initialArc }) => {
   const [arc, setArc] = useState(initialArc);
@@ -29,7 +29,6 @@ const Arc = ({ arc: initialArc }) => {
     
     return { center: [x, y], radius };
   }
-
 
   function calculateAngle(center, point) {
     return Math.atan2(point[1] - center[1], point[0] - center[0]);
@@ -96,21 +95,25 @@ const Arc = ({ arc: initialArc }) => {
   let midAngle = calculateAngle(center, arc[1]);
   let endAngle = calculateAngle(center, arc[2]);
 
-  startAngle = (startAngle + 2 * Math.PI) % (2 * Math.PI);
-  midAngle = (midAngle + 2 * Math.PI) % (2 * Math.PI);
-  endAngle = (endAngle + 2 * Math.PI) % (2 * Math.PI);
+  // Ensure angles are in the correct order
+  while (midAngle < startAngle) midAngle += 2 * Math.PI;
+  while (endAngle < midAngle) endAngle += 2 * Math.PI;
 
-  let counterclockwise = true;
-  if (startAngle < endAngle) {
-    if(midAngle < startAngle && midAngle > endAngle) counterclockwise=false
-  } else {
-    counterclockwise = (midAngle > endAngle && midAngle < startAngle);
+  // Determine if we need to draw the long way around
+  const longWay = endAngle - startAngle > Math.PI;
+
+  // If we need to go the long way, swap start and end
+  if (longWay) {
+    [startAngle, endAngle] = [endAngle, startAngle];
   }
 
-  const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
-  const sweepFlag = counterclockwise ? 0 : 1;
+  const sweepFlag = longWay ? 0 : 1;
+  const largeArcFlag = longWay ? 1 : 0;
 
-  const d = `M ${arc[0][0]} ${arc[0][1]} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${arc[2][0]} ${arc[2][1]}`;
+  const d = `
+    M ${arc[0][0]} ${arc[0][1]}
+    A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${arc[2][0]} ${arc[2][1]}
+  `;
 
   return (
     <svg 
@@ -120,14 +123,13 @@ const Arc = ({ arc: initialArc }) => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default' }}
+      style={{ position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default',pointerEvents:"visible" }}
     >
       <path
         d={d}
         fill="none"
         stroke="yellow"
         strokeWidth="2"
-        pointerEvents="visible"
       />
       {isSelected && arc.map((point, index) => (
         <circle
@@ -136,7 +138,6 @@ const Arc = ({ arc: initialArc }) => {
           cy={point[1]}
           r={index === draggedPointIndex ? 8 : 4}
           fill={index === draggedPointIndex ? 'rgba(255, 255, 0, 0.5)' : 'yellow'}
-          pointerEvents="visible"
         />
       ))}
     </svg>
