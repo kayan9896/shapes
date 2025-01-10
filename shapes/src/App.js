@@ -21,6 +21,12 @@ const App = () => {
     [150, 100]   // Second vertex
   ];
 
+  const sinPoints = [];
+  for (let x = 0; x < squareSize; x += 10) {
+    const y = squareSize/2 + Math.sin(x/30) * 50;
+    sinPoints.push([x, y]);
+  }
+
   const handleCenterChange = useCallback((newCenter) => {
     setcCenter(newCenter);
     console.log("New center:", newCenter);
@@ -58,12 +64,12 @@ const App = () => {
         <Ellipse ellipse={ellipsePoints} />
         <Line 
           squareSize={squareSize} 
-          initialCenter={{ x: squareSize / 2, y: squareSize / 2 }}
-          initialRandomPoint={{
-            x: Math.random() * squareSize,
-            y: Math.random() * squareSize
-          }}
+          points={[[200,200],[300,300]]}
         />
+        <Line 
+        squareSize={squareSize}
+        points={sinPoints}
+      />
       </div>
       <div>
         <p>Center: ({ccenter[0]}, {ccenter[1]})</p>
