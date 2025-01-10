@@ -123,7 +123,7 @@ const Line = ({ squareSize, points }) => {
       const vector = [next[0] - prev[0], next[1] - prev[1]];
       
       // Create control points by using a fraction of the vector
-      const fraction = 0.2; // Adjust this value to change curve smoothness
+      const fraction = 0.25; // Adjust this value to change curve smoothness
       
       controlPoints.push([
         [current[0] - vector[0] * fraction, current[1] - vector[1] * fraction],
