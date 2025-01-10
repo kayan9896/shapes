@@ -1,17 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Arc = ({ arc: initialArc }) => {
-  const canvasRef = useRef(null);
   const [arc, setArc] = useState(initialArc);
   const [isSelected, setIsSelected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPointIndex, setDraggedPointIndex] = useState(null);
   const [dragStart, setDragStart] = useState(null);
-
-  useEffect(() => {
-    if (!arc || arc.length !== 3) return;
-    drawArc();
-  }, [arc, isSelected, isDragging, draggedPointIndex]);
 
   function findCircle(p1, p2, p3) {
     const x1 = p1[0], y1 = p1[1];
@@ -36,86 +30,26 @@ const Arc = ({ arc: initialArc }) => {
     return { center: [x, y], radius };
   }
 
+
   function calculateAngle(center, point) {
     return Math.atan2(point[1] - center[1], point[0] - center[0]);
   }
 
-  function drawArc() {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    const { center, radius } = findCircle(arc[0], arc[1], arc[2]);
-    let startAngle = calculateAngle(center, arc[0]);
-    let midAngle = calculateAngle(center, arc[1]);
-    let endAngle = calculateAngle(center, arc[2]);
-
-    startAngle = (startAngle + 2 * Math.PI) % (2 * Math.PI);
-    midAngle = (midAngle + 2 * Math.PI) % (2 * Math.PI);
-    endAngle = (endAngle + 2 * Math.PI) % (2 * Math.PI);
-
-    let counterclockwise = true;
-    if (startAngle < endAngle) {
-      if(midAngle < startAngle && midAngle > endAngle) counterclockwise=false
-    } else {
-      counterclockwise = (midAngle > endAngle && midAngle < startAngle);
-    }
-
-    // Draw arc
-    ctx.beginPath();
-    ctx.strokeStyle = 'yellow';
-    ctx.lineWidth = 2;
-    ctx.arc(center[0], center[1], radius, startAngle, endAngle, counterclockwise);
-    ctx.stroke();
-
-    // Draw points if selected
-    if (isSelected) {
-      arc.forEach((point, index) => {
-        ctx.beginPath();
-        
-        // Enlarged and transparent if being dragged
-        if (index === draggedPointIndex) {
-          ctx.arc(point[0], point[1], 8, 0, 2 * Math.PI);
-          ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
-        } else {
-          ctx.arc(point[0], point[1], 4, 0, 2 * Math.PI);
-          ctx.fillStyle = 'yellow';
-        }
-        
-        ctx.fill();
-      });
-    }
-  }
-
-  function isPointOnArc(x, y) {
-    const { center, radius } = findCircle(arc[0], arc[1], arc[2]);
-    const distanceFromCenter = Math.sqrt(
-      Math.pow(x - center[0], 2) + Math.pow(y - center[1], 2)
-    );
-    return Math.abs(distanceFromCenter - radius) < 5;
-  }
-
-  function isPointNearControlPoint(x, y) {
-    return arc.findIndex(point => 
-      Math.sqrt(Math.pow(x - point[0], 2) + Math.pow(y - point[1], 2)) < 5
-    );
-  }
-
   function handleMouseDown(e) {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const controlPointIndex = isPointNearControlPoint(x, y);
+    const controlPointIndex = arc.findIndex(point => 
+      Math.sqrt(Math.pow(x - point[0], 2) + Math.pow(y - point[1], 2)) < 5
+    );
     
     if (controlPointIndex !== -1) {
       setIsDragging(true);
       setDraggedPointIndex(controlPointIndex);
       setDragStart([x, y]);
       setIsSelected(true);
-    } else if (isPointOnArc(x, y)) {
+    } else if (e.target.tagName === 'path') {
       setIsDragging(true);
       setDraggedPointIndex(null);
       setDragStart([x, y]);
@@ -128,8 +62,7 @@ const Arc = ({ arc: initialArc }) => {
   function handleMouseMove(e) {
     if (!isDragging) return;
 
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -158,18 +91,55 @@ const Arc = ({ arc: initialArc }) => {
     setDraggedPointIndex(null);
   }
 
+  const { center, radius } = findCircle(arc[0], arc[1], arc[2]);
+  let startAngle = calculateAngle(center, arc[0]);
+  let midAngle = calculateAngle(center, arc[1]);
+  let endAngle = calculateAngle(center, arc[2]);
+
+  startAngle = (startAngle + 2 * Math.PI) % (2 * Math.PI);
+  midAngle = (midAngle + 2 * Math.PI) % (2 * Math.PI);
+  endAngle = (endAngle + 2 * Math.PI) % (2 * Math.PI);
+
+  let counterclockwise = true;
+  if (startAngle < endAngle) {
+    if(midAngle < startAngle && midAngle > endAngle) counterclockwise=false
+  } else {
+    counterclockwise = (midAngle > endAngle && midAngle < startAngle);
+  }
+
+  const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+  const sweepFlag = counterclockwise ? 0 : 1;
+
+  const d = `M ${arc[0][0]} ${arc[0][1]} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${arc[2][0]} ${arc[2][1]}`;
+
   return (
-    <canvas 
-      ref={canvasRef} 
-      width={400} 
-      height={400}
+    <svg 
+      width="400" 
+      height="400"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      pointerEvents={"visible"}
-      style={{  position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default', pointerEvents:"visible" }}
-    />
+      style={{ position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default' }}
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke="yellow"
+        strokeWidth="2"
+        pointerEvents="visible"
+      />
+      {isSelected && arc.map((point, index) => (
+        <circle
+          key={index}
+          cx={point[0]}
+          cy={point[1]}
+          r={index === draggedPointIndex ? 8 : 4}
+          fill={index === draggedPointIndex ? 'rgba(255, 255, 0, 0.5)' : 'yellow'}
+          pointerEvents="visible"
+        />
+      ))}
+    </svg>
   );
 };
 

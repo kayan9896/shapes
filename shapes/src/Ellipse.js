@@ -1,17 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 const Ellipse = ({ ellipse: initialEllipse }) => {
-  const canvasRef = useRef(null);
   const [ellipse, setEllipse] = useState(initialEllipse);
   const [isSelected, setIsSelected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPointIndex, setDraggedPointIndex] = useState(null);
   const [dragStart, setDragStart] = useState(null);
-
-  useEffect(() => {
-    if (!ellipse || ellipse.length !== 3) return;
-    drawEllipse();
-  }, [ellipse, isSelected, isDragging, draggedPointIndex]);
 
   function calculateEllipseParameters() {
     // First and last points are vertices on major axis
@@ -43,92 +37,22 @@ const Ellipse = ({ ellipse: initialEllipse }) => {
     return { center, a, b, angle };
   }
 
-  function drawEllipse() {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    const { center, a, b, angle } = calculateEllipseParameters();
-    
-    // Draw ellipse
-    ctx.beginPath();
-    ctx.strokeStyle = 'purple';
-    ctx.lineWidth = 2;
-    
-    for (let t = 0; t < 2 * Math.PI; t += 0.01) {
-      const x = a * Math.cos(t);
-      const y = b * Math.sin(t);
-      
-      // Rotate and translate
-      const xRot = center[0] + x * Math.cos(angle) - y * Math.sin(angle);
-      const yRot = center[1] + x * Math.sin(angle) + y * Math.cos(angle);
-      
-      if (t === 0) {
-        ctx.moveTo(xRot, yRot);
-      } else {
-        ctx.lineTo(xRot, yRot);
-      }
-    }
-    
-    ctx.closePath();
-    ctx.stroke();
-
-    // Draw points if selected
-    if (isSelected) {
-      ellipse.forEach((point, index) => {
-        ctx.beginPath();
-        
-        if (index === draggedPointIndex) {
-          ctx.arc(point[0], point[1], 8, 0, 2 * Math.PI);
-          ctx.fillStyle = 'rgba(255, 255, 0, 0)';
-        } else {
-          ctx.arc(point[0], point[1], 4, 0, 2 * Math.PI);
-          ctx.fillStyle = 'purple';
-        }
-        
-        ctx.fill();
-      });
-    }
-  }
-
-  function isPointOnEllipse(x, y) {
-    const { center, a, b, angle } = calculateEllipseParameters();
-    
-    // Transform point to ellipse coordinate system
-    const xTranslated = x - center[0];
-    const yTranslated = y - center[1];
-    
-    // Rotate point
-    const xRotated = xTranslated * Math.cos(-angle) - yTranslated * Math.sin(-angle);
-    const yRotated = xTranslated * Math.sin(-angle) + yTranslated * Math.cos(-angle);
-    
-    // Check if point is on ellipse (with tolerance)
-    const tolerance = 5;
-    const normalizedDistance = Math.pow(xRotated / a, 2) + Math.pow(yRotated / b, 2);
-    return Math.abs(normalizedDistance - 1) < tolerance / Math.min(a, b);
-  }
-
-  function isPointNearControlPoint(x, y) {
-    return ellipse.findIndex(point => 
-      Math.sqrt(Math.pow(x - point[0], 2) + Math.pow(y - point[1], 2)) < 5
-    );
-  }
 
   function handleMouseDown(e) {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const controlPointIndex = isPointNearControlPoint(x, y);
+    const controlPointIndex = ellipse.findIndex(point => 
+      Math.sqrt(Math.pow(x - point[0], 2) + Math.pow(y - point[1], 2)) < 5
+    );
     
     if (controlPointIndex !== -1) {
       setIsDragging(true);
       setDraggedPointIndex(controlPointIndex);
       setDragStart([x, y]);
       setIsSelected(true);
-    } else if (isPointOnEllipse(x, y)) {
+    } else if (e.target.tagName === 'ellipse') {
       setIsDragging(true);
       setDraggedPointIndex(null);
       setDragStart([x, y]);
@@ -141,8 +65,7 @@ const Ellipse = ({ ellipse: initialEllipse }) => {
   function handleMouseMove(e) {
     if (!isDragging) return;
 
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -171,17 +94,40 @@ const Ellipse = ({ ellipse: initialEllipse }) => {
     setDraggedPointIndex(null);
   }
 
+  const { center, a, b, angle } = calculateEllipseParameters();
+
   return (
-    <canvas 
-      ref={canvasRef} 
-      width={400} 
-      height={400}
+    <svg 
+      width="400" 
+      height="400"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{  position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default', pointerEvents:"visible"}}
-    />
+      style={{ position: 'absolute', top: 0, left: 0, cursor: isDragging ? 'grabbing' : isSelected ? 'grab' : 'default' }}
+    >
+      <ellipse
+        cx={center[0]}
+        cy={center[1]}
+        rx={a}
+        ry={b}
+        transform={`rotate(${angle * 180 / Math.PI} ${center[0]} ${center[1]})`}
+        fill="none"
+        stroke="purple"
+        strokeWidth="2"
+        pointerEvents="visible"
+      />
+      {isSelected && ellipse.map((point, index) => (
+        <circle
+          key={index}
+          cx={point[0]}
+          cy={point[1]}
+          r={index === draggedPointIndex ? 8 : 4}
+          fill={index === draggedPointIndex ? 'rgba(255, 0, 255, 0.5)' : 'purple'}
+          pointerEvents="visible"
+        />
+      ))}
+    </svg>
   );
 };
 

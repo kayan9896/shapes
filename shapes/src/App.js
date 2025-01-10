@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Circle from './Circle';
 import Arc from './Arc';
 import Ellipse from './Ellipse';
@@ -21,15 +21,15 @@ const App = () => {
     [150, 100]   // Second vertex
   ];
 
-  const handleCenterChange = (newCenter) => {
+  const handleCenterChange = useCallback((newCenter) => {
     setcCenter(newCenter);
     console.log("New center:", newCenter);
-  };
+  }, []);
 
-  const handleEdgePointChange = (newEdgePoint) => {
+  const handleEdgePointChange = useCallback((newEdgePoint) => {
     setEdgePoint(newEdgePoint);
     console.log("New edge point:", newEdgePoint);
-  };
+  }, []);
 
   return (
     <div 
@@ -46,7 +46,7 @@ const App = () => {
         alt="Square content" 
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',pointerEvents:"none" }}>
         <Circle 
           center={ccenter}
           edgePoint={edgePoint}
