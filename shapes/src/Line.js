@@ -8,7 +8,7 @@ const Line = ({ squareSize, points }) => {
   const [dragLine, setDragLine] = useState(false);
   const lineRef = useRef(null);
 
-  const HIT_TOLERANCE = 10;
+  const HIT_TOLERANCE = 15;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -106,6 +106,47 @@ const Line = ({ squareSize, points }) => {
     setShowDots(true);
   };
 
+  const calculateSmoothCurve = (points) => {
+    if (points.length < 2) return '';
+    if (points.length === 2) {
+      return `M${points[0][0]},${points[0][1]} L${points[1][0]},${points[1][1]}`;
+    }
+
+    // Calculate control points for each point
+    const controlPoints = [];
+    for (let i = 0; i < points.length; i++) {
+      const prev = i > 0 ? points[i - 1] : points[i];
+      const current = points[i];
+      const next = i < points.length - 1 ? points[i + 1] : points[i];
+
+      // Calculate the vector between previous and next point
+      const vector = [next[0] - prev[0], next[1] - prev[1]];
+      
+      // Create control points by using a fraction of the vector
+      const fraction = 0.2; // Adjust this value to change curve smoothness
+      
+      controlPoints.push([
+        [current[0] - vector[0] * fraction, current[1] - vector[1] * fraction],
+        [current[0] + vector[0] * fraction, current[1] + vector[1] * fraction]
+      ]);
+    }
+
+    // Build the SVG path command
+    let pathCommand = `M${points[0][0]},${points[0][1]}`;
+    for (let i = 1; i < points.length; i++) {
+      const cp1 = controlPoints[i-1][1];
+      const cp2 = controlPoints[i][0];
+      const p = points[i];
+      pathCommand += ` C${cp1[0]},${cp1[1]} ${cp2[0]},${cp2[1]} ${p[0]},${p[1]}`;
+    }
+    
+    return pathCommand;
+  };
+
+  // Rest of the functions (handleGlobalMove, handleDotMouseDown, etc.) remain the same
+
+  const pathCommand = calculateSmoothCurve(curvePoints);
+
   return (
     <>
       <svg 
@@ -113,11 +154,11 @@ const Line = ({ squareSize, points }) => {
         width={squareSize} 
         height={squareSize}
         style={{ position: 'absolute', top: 0, left: 0 }}
-        
+        pointerEvents="none"
       >
-        {/* Invisible line for better hit detection */}
+        {/* Invisible path for hit detection */}
         <path
-          d={`M ${curvePoints.map(p => `${p[0]} ${p[1]}`).join(' L ')}`}
+          d={pathCommand}
           stroke="transparent"
           strokeWidth={HIT_TOLERANCE * 2}
           fill="none"
@@ -126,15 +167,16 @@ const Line = ({ squareSize, points }) => {
           onMouseDown={handleLineMouseDown}
           onTouchStart={handleTouchStart}
         />
-        {/* Visible line */}
+        {/* Visible smooth curve */}
         <path
-          d={`M ${curvePoints.map(p => `${p[0]} ${p[1]}`).join(' L ')}`}
+          d={pathCommand}
           stroke="red"
           strokeWidth="2"
           fill="none"
           pointerEvents="none"
         />
       </svg>
+
 
       {showDots && curvePoints.map((point, index) => (
         <div
@@ -148,8 +190,8 @@ const Line = ({ squareSize, points }) => {
             borderRadius: '50%',
             position: 'absolute',
             cursor: 'move',
-            left: `${point[0] - (activeDotIndex === index ? 10 : 5)}px`,
-            top: `${point[1] - (activeDotIndex === index ? 10 : 5)}px`,
+            left: `${point[0]-2 - (activeDotIndex === index ? 10 : 5)}px`,
+            top: `${point[1]-2 - (activeDotIndex === index ? 10 : 5)}px`,
             touchAction: 'none',
             pointerEvents: "auto",
             zIndex: 10

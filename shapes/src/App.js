@@ -22,7 +22,7 @@ const App = () => {
   ];
 
   const sinPoints = [];
-  for (let x = 0; x < squareSize; x += 10) {
+  for (let x = 0; x < squareSize; x += 30) {
     const y = squareSize/2 + Math.sin(x/30) * 50;
     sinPoints.push([x, y]);
   }
